@@ -1,0 +1,1806 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日英翻译工具 - Excel Translator</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --primary: #1E293B;
+    --primary-light: #334155;
+    --accent: #22C55E;
+    --accent-hover: #16A34A;
+    --cta: #F97316;
+    --cta-hover: #EA580C;
+    --bg: #0F172A;
+    --bg-card: #1E293B;
+    --bg-input: #0F172A;
+    --text: #F8FAFC;
+    --text-muted: #94A3B8;
+    --border: #475569;
+    --danger: #EF4444;
+    --danger-hover: #DC2626;
+    --warning: #F59E0B;
+    --success: #22C55E;
+    --info: #3B82F6;
+    --radius: 8px;
+    --shadow: 0 4px 6px -1px rgba(0,0,0,0.3), 0 2px 4px -2px rgba(0,0,0,0.2);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ===== Header ===== */
+  .header {
+    background: var(--primary);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header h1 { font-size: 20px; font-weight: 700; color: var(--text); white-space: nowrap; }
+  .header h1 span { color: var(--accent); }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+
+  /* ===== Language Switcher ===== */
+  .lang-switcher {
+    display: flex;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .lang-btn {
+    padding: 4px 10px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .lang-btn:hover { color: var(--text); }
+  .lang-btn.active { background: var(--accent); color: var(--bg); }
+
+  /* ===== Tabs ===== */
+  .tabs {
+    display: flex;
+    background: var(--primary);
+    border-bottom: 1px solid var(--border);
+  }
+  .tab-btn {
+    padding: 12px 24px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ===== Main Content ===== */
+  .main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ===== Cards ===== */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .badge {
+    font-size: 11px;
+    background: var(--accent);
+    color: var(--bg);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+
+  /* ===== Upload Zone ===== */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--bg-input);
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(34, 197, 94, 0.05);
+  }
+  .upload-zone .icon { font-size: 48px; margin-bottom: 12px; }
+  .upload-zone p { color: var(--text-muted); font-size: 14px; }
+  .upload-zone .filename {
+    margin-top: 8px;
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  /* ===== Form Controls ===== */
+  .form-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 180px;
+  }
+  .form-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  input[type="text"], input[type="url"], input[type="number"], select, textarea {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 60px; }
+  input:read-only, input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ===== Buttons ===== */
+  .btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-cta { background: var(--cta); color: #fff; }
+  .btn-cta:hover { background: var(--cta-hover); }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover { background: var(--danger-hover); }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-outline:hover { background: rgba(255,255,255,0.05); }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-icon { width: 32px; height: 32px; padding: 0; justify-content: center; border-radius: 6px; }
+
+  /* ===== Sheet Tabs ===== */
+  .sheet-tabs { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+  .sheet-tab {
+    padding: 6px 14px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .sheet-tab:hover { color: var(--text); }
+  .sheet-tab.active { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+
+  /* ===== Column Selection ===== */
+  .column-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
+  }
+  .column-card {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .column-card:hover { border-color: var(--text-muted); }
+  .column-card.selected { border-color: var(--accent); background: rgba(34, 197, 94, 0.08); }
+  .column-card input[type="checkbox"] { margin-top: 3px; accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+  .column-info { flex: 1; min-width: 0; }
+  .column-name { font-weight: 600; font-size: 14px; color: var(--text); }
+  .column-preview { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+
+  /* ===== Progress ===== */
+  .progress-bar { background: var(--bg-input); border-radius: 6px; height: 24px; overflow: hidden; position: relative; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #4ADE80); border-radius: 6px; transition: width 0.3s; min-width: 0; }
+  .progress-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 12px; font-weight: 700; color: var(--bg); text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+  .status-msg { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+  .status-msg.error { color: var(--danger); }
+  .status-msg.success { color: var(--success); }
+
+  /* ===== Radio/Toggle ===== */
+  .radio-group { display: flex; gap: 16px; align-items: center; }
+  .radio-group label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; color: var(--text); }
+  .radio-group input[type="radio"] { accent-color: var(--accent); }
+  .toggle-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
+  .toggle { width: 36px; height: 20px; background: var(--border); border-radius: 10px; position: relative; transition: background 0.2s; }
+  .toggle::after { content: ''; width: 16px; height: 16px; background: #fff; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: transform 0.2s; }
+  .toggle.on { background: var(--accent); }
+  .toggle.on::after { transform: translateX(16px); }
+
+  /* ===== Connection Status ===== */
+  .conn-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 12px; }
+  .conn-status.ok { background: rgba(34,197,94,0.15); color: var(--success); }
+  .conn-status.fail { background: rgba(239,68,68,0.15); color: var(--danger); }
+  .conn-status.checking { background: rgba(245,158,11,0.15); color: var(--warning); }
+  .conn-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .conn-status.ok .conn-dot { background: var(--success); }
+  .conn-status.fail .conn-dot { background: var(--danger); }
+  .conn-status.checking .conn-dot { background: var(--warning); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ===== Dictionary Table ===== */
+  .dict-toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+  .dict-toolbar .search-box { flex: 1; min-width: 200px; }
+  .dict-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+  .dict-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .dict-table th { background: var(--bg-input); padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .dict-table td { padding: 10px 12px; border-bottom: 1px solid rgba(71,85,105,0.3); vertical-align: top; }
+  .dict-table tr:last-child td { border-bottom: none; }
+  .dict-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .dict-table .jp-text { font-weight: 600; color: var(--text); }
+  .dict-table .en-text { color: var(--accent); }
+  .dict-table .cat-badge { display: inline-block; background: rgba(59,130,246,0.15); color: var(--info); padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+  .dict-table .actions { display: flex; gap: 4px; }
+  .empty-state { text-align: center; padding: 40px; color: var(--text-muted); font-size: 14px; }
+
+  /* ===== Modal ===== */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 90%; max-width: 500px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+  .modal h3 { font-size: 18px; margin-bottom: 16px; font-weight: 700; }
+  .modal .form-group { margin-bottom: 12px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+  .error-msg { color: var(--danger); font-size: 12px; margin-top: 4px; }
+
+  /* ===== Toast ===== */
+  .toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
+  .toast { padding: 12px 20px; border-radius: var(--radius); font-size: 14px; font-weight: 600; box-shadow: var(--shadow); animation: slideIn 0.3s ease; max-width: 400px; }
+  .toast.success { background: var(--success); color: var(--bg); }
+  .toast.error { background: var(--danger); color: #fff; }
+  .toast.warning { background: var(--warning); color: var(--bg); }
+  .toast.info { background: var(--info); color: #fff; }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* ===== Settings Tab Specific ===== */
+  .settings-section { margin-bottom: 20px; }
+  .settings-section:last-child { margin-bottom: 0; }
+  .settings-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(34, 197, 94, 0.2);
+  }
+  .model-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .model-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+  }
+  .model-item:hover { border-color: var(--text-muted); }
+  .model-item.selected { border-color: var(--accent); background: rgba(34, 197, 94, 0.08); }
+  .model-item .model-radio { accent-color: var(--accent); width: 16px; height: 16px; }
+  .model-item .model-name { font-weight: 600; color: var(--text); flex: 1; }
+  .model-item .model-size { font-size: 12px; color: var(--text-muted); }
+  .model-item-custom {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+  }
+  .model-item-custom:hover { border-color: var(--text-muted); }
+  .model-item-custom.selected { border-color: var(--accent); background: rgba(34, 197, 94, 0.08); }
+  .model-item-custom .model-radio { accent-color: var(--accent); width: 16px; height: 16px; }
+  .custom-model-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    outline: none;
+  }
+  .custom-model-input:focus { border-color: var(--accent); }
+
+  .conn-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .setting-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--bg-input);
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .setting-summary .val { color: var(--accent); font-weight: 600; }
+
+  .hidden { display: none !important; }
+  .flex-end { display: flex; justify-content: flex-end; gap: 8px; }
+  .mt-8 { margin-top: 8px; }
+  .mt-16 { margin-top: 16px; }
+  .text-muted { color: var(--text-muted); }
+  .text-sm { font-size: 12px; }
+</style>
+</head>
+<body>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-left">
+    <h1><span>&#x21C4;</span> <span data-i18n="appTitle">日英翻译工具</span></h1>
+  </div>
+  <div class="header-right">
+    <div id="connStatus" class="conn-status fail">
+      <span class="conn-dot"></span>
+      <span id="connText" data-i18n="connDisconnected">未连接</span>
+    </div>
+    <div class="lang-switcher">
+      <button class="lang-btn active" data-lang="zh">中文</button>
+      <button class="lang-btn" data-lang="ja">日本語</button>
+      <button class="lang-btn" data-lang="en">EN</button>
+    </div>
+  </div>
+</header>
+
+<!-- Tabs -->
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="translate" data-i18n="tabTranslate">&#x1F4C4; 翻译工作台</button>
+  <button class="tab-btn" data-tab="dictionary" data-i18n="tabDictionary">&#x1F4D6; 词库管理</button>
+  <button class="tab-btn" data-tab="settings" data-i18n="tabSettings">&#x2699; 设置</button>
+</nav>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- ==================== Translate Tab ==================== -->
+  <div class="tab-content active" id="tab-translate">
+
+    <!-- Upload -->
+    <div class="card">
+      <div class="card-title" data-i18n="cardUpload">&#x1F4CE; 文件上传</div>
+      <div class="upload-zone" id="uploadZone">
+        <div class="icon">&#x1F4CA;</div>
+        <p data-i18n="uploadHint">拖拽或点击上传 Excel 文件</p>
+        <p class="text-sm text-muted mt-8">.xlsx / .xls</p>
+        <div class="filename hidden" id="fileName"></div>
+      </div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls" class="hidden">
+    </div>
+
+    <!-- Translate Options (simplified — no Ollama config) -->
+    <div class="card" id="settingsCard" style="display:none">
+      <div class="card-title">
+        <span data-i18n="cardTranslateOptions">&#x2699; 翻译选项</span>
+        <span class="setting-summary" id="currentModelSummary">
+          <span data-i18n="summaryModel">模型</span>: <span class="val" id="summaryModelVal">-</span>
+        </span>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label data-i18n="labelStrategy">翻译策略</label>
+          <div class="radio-group">
+            <label><input type="radio" name="strategy" value="smart" checked> <span data-i18n="strategySmart">智能批量</span></label>
+            <label><input type="radio" name="strategy" value="single"> <span data-i18n="strategySingle">逐格翻译</span></label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label data-i18n="labelDictionary">词库</label>
+          <label class="toggle-label">
+            <div class="toggle on" id="dictToggle" tabindex="0"></div>
+            <span data-i18n="dictEnabled">启用词库</span> <span id="dictCount" class="badge">0</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sheet & Column Selection -->
+    <div class="card" id="selectCard" style="display:none">
+      <div class="card-title" data-i18n="cardSelect">&#x2714; 列选择</div>
+      <div class="sheet-tabs" id="sheetTabs"></div>
+      <div class="column-grid" id="columnGrid"></div>
+    </div>
+
+    <!-- Progress -->
+    <div class="card hidden" id="progressCard">
+      <div class="card-title" data-i18n="cardProgress">&#x23F3; 翻译进度</div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+        <span class="progress-text" id="progressText">0%</span>
+      </div>
+      <div class="status-msg" id="statusMsg" data-i18n="statusPreparing">准备中...</div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex-end mt-16" id="actionBar" style="display:none">
+      <button class="btn btn-cta" id="btnTranslate" disabled data-i18n="btnStart">&#x1F680; 开始翻译</button>
+      <button class="btn btn-danger hidden" id="btnCancel" data-i18n="btnCancel">&#x23F9; 取消</button>
+    </div>
+  </div>
+
+  <!-- ==================== Dictionary Tab ==================== -->
+  <div class="tab-content" id="tab-dictionary">
+    <div class="card">
+      <div class="card-title">
+        <span data-i18n="cardDict">&#x1F4D6; 词库管理</span>
+        <span class="badge" id="entryCount">0</span>
+      </div>
+      <div class="dict-toolbar">
+        <input type="text" class="search-box" id="dictSearch" data-i18n-placeholder="dictSearchPh">
+        <select id="dictFilter">
+          <option value="" data-i18n="dictAllCat">全部分类</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="btnAddEntry" data-i18n="btnAdd">+ 添加</button>
+        <button class="btn btn-outline btn-sm" id="btnImportDict" data-i18n="btnImport">&#x1F4E5; 导入</button>
+        <button class="btn btn-outline btn-sm" id="btnExportDict" data-i18n="btnExport">&#x1F4E4; 导出</button>
+      </div>
+      <div class="dict-table-wrap">
+        <table class="dict-table">
+          <thead>
+            <tr>
+              <th data-i18n="thCategory">分类</th>
+              <th data-i18n="thJapanese">日文</th>
+              <th data-i18n="thEnglish">英文</th>
+              <th data-i18n="thNote">备注</th>
+              <th data-i18n="thActions">操作</th>
+            </tr>
+          </thead>
+          <tbody id="dictBody">
+            <tr><td colspan="5" class="empty-state" data-i18n="dictEmpty">暂无词库条目</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== Settings Tab ==================== -->
+  <div class="tab-content" id="tab-settings">
+    <div class="card">
+      <div class="card-title" data-i18n="cardOllamaSettings">&#x1F527; Ollama 连接设置</div>
+
+      <div class="settings-section">
+        <div class="settings-section-title" data-i18n="sectionConnection">连接配置</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label data-i18n="labelOllamaUrl">OLLAMA 地址</label>
+            <input type="url" id="ollamaUrl" value="http://localhost:11434">
+          </div>
+          <div class="form-group" style="flex:0; min-width:auto; align-self:flex-end;">
+            <button class="btn btn-primary" id="btnCheckConn" data-i18n="btnCheck">&#x21BB; 检测连接</button>
+          </div>
+        </div>
+        <div class="conn-bar">
+          <div id="connStatusSettings" class="conn-status fail">
+            <span class="conn-dot"></span>
+            <span id="connTextSettings" data-i18n="connDisconnected">未连接</span>
+          </div>
+          <span class="text-sm text-muted" id="connDetail"></span>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title" data-i18n="sectionModel">模型选择</div>
+        <div id="modelListContainer">
+          <div class="empty-state" id="modelListEmpty" data-i18n="modelListHint">点击「检测连接」获取可用模型列表</div>
+          <div class="model-list hidden" id="modelList"></div>
+          <div class="model-item-custom" id="customModelItem">
+            <input type="radio" name="modelSelect" class="model-radio" value="__custom__" id="radioCustomModel">
+            <label for="radioCustomModel" data-i18n="labelCustomModel" style="cursor:pointer;white-space:nowrap">自定义模型:</label>
+            <input type="text" class="custom-model-input" id="customModelInput" placeholder="model-name">
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title" data-i18n="sectionAdvanced">高级参数</div>
+        <div class="form-row">
+          <div class="form-group" style="max-width:200px">
+            <label data-i18n="labelTimeout">超时(秒)</label>
+            <input type="number" id="ollamaTimeout" value="120" min="30" max="600" step="10">
+          </div>
+          <div class="form-group" style="max-width:200px">
+            <label data-i18n="labelBatchSize">批量大小</label>
+            <input type="number" id="ollamaBatchSize" value="5" min="1" max="20" step="1">
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-end mt-16">
+        <button class="btn btn-primary" id="btnSaveSettings" data-i18n="btnSaveSettings">&#x1F4BE; 保存设置</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="entryModal">
+  <div class="modal">
+    <h3 id="modalTitle" data-i18n="modalAdd">添加词条</h3>
+    <div class="form-group">
+      <label data-i18n="labelJapanese">日文 <span style="color:var(--danger)">*</span></label>
+      <input type="text" id="entryJapanese" data-i18n-placeholder="phJapanese">
+      <div class="error-msg hidden" id="jpDuplicateMsg" data-i18n="errDuplicate">该日文词条已存在</div>
+    </div>
+    <div class="form-group">
+      <label data-i18n="labelEnglish">英文 <span style="color:var(--danger)">*</span></label>
+      <input type="text" id="entryEnglish" data-i18n-placeholder="phEnglish">
+    </div>
+    <div class="form-group">
+      <label data-i18n="labelCategory">分类</label>
+      <input type="text" id="entryCategory" data-i18n-placeholder="phCategory">
+    </div>
+    <div class="form-group">
+      <label data-i18n="labelNote">备注</label>
+      <textarea id="entryNote" rows="2" data-i18n-placeholder="phNote"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="btnCancelModal" data-i18n="btnCancelText">取消</button>
+      <button class="btn btn-primary" id="btnSaveEntry" data-i18n="btnSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <h3 data-i18n="modalDeleteTitle">删除确认</h3>
+    <p id="deleteMsg" data-i18n="modalDeleteMsg">确定要删除该词条吗？</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="btnCancelDelete" data-i18n="btnCancelText">取消</button>
+      <button class="btn btn-danger" id="btnConfirmDelete" data-i18n="btnDelete">删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import File Input (hidden) -->
+<input type="file" id="importFileInput" accept=".json" class="hidden">
+
+<script>
+// ============================================================
+// I18N - Internationalization
+// ============================================================
+const LANG = {
+  zh: {
+    appTitle: '日英翻译工具',
+    tabTranslate: '\u{1F4C4} 翻译工作台',
+    tabDictionary: '\u{1F4D6} 词库管理',
+    tabSettings: '\u2699 设置',
+    connDisconnected: '未连接',
+    connChecking: '检测中...',
+    connOk: '已连接 ({n}个模型)',
+    connFail: '连接失败',
+    cardUpload: '\u{1F4CE} 文件上传',
+    uploadHint: '拖拽或点击上传 Excel 文件',
+    cardTranslateOptions: '\u2699 翻译选项',
+    summaryModel: '模型',
+    labelStrategy: '翻译策略',
+    strategySmart: '智能批量',
+    strategySingle: '逐格翻译',
+    labelDictionary: '词库',
+    dictEnabled: '启用词库',
+    cardSelect: '\u2714 列选择',
+    colPrefix: '列',
+    emptyCol: '(空)',
+    cardProgress: '\u23F3 翻译进度',
+    statusPreparing: '准备中...',
+    cellProgress: '{done} / {total} 单元格完成',
+    btnStart: '\u{1F680} 开始翻译',
+    btnCancel: '\u23F9 取消',
+    cardOllamaSettings: '\u{1F527} Ollama 连接设置',
+    sectionConnection: '连接配置',
+    labelOllamaUrl: 'OLLAMA 地址',
+    btnCheck: '\u21BB 检测连接',
+    sectionModel: '模型选择',
+    modelListHint: '点击「检测连接」获取可用模型列表',
+    labelCustomModel: '自定义模型:',
+    sectionAdvanced: '高级参数',
+    labelTimeout: '超时(秒)',
+    labelBatchSize: '批量大小',
+    btnSaveSettings: '\u{1F4BE} 保存设置',
+    toastSettingsSaved: '设置已保存',
+    toastOllamaOk: 'Ollama 连接成功，发现 {n} 个模型',
+    toastOllamaFail: 'Ollama 无法连接',
+    toastNoModelSelected: '请先在设置中选择模型',
+    cardDict: '\u{1F4D6} 词库管理',
+    dictSearchPh: '搜索...',
+    dictAllCat: '全部分类',
+    btnAdd: '+ 添加',
+    btnImport: '\u{1F4E5} 导入',
+    btnExport: '\u{1F4E4} 导出',
+    thCategory: '分类',
+    thJapanese: '日文',
+    thEnglish: '英文',
+    thNote: '备注',
+    thActions: '操作',
+    dictEmpty: '暂无词库条目',
+    modalAdd: '添加词条',
+    modalEdit: '编辑词条',
+    labelJapanese: '日文 *',
+    labelEnglish: '英文 *',
+    labelCategory: '分类',
+    labelNote: '备注',
+    phJapanese: '日文文本',
+    phEnglish: 'English text',
+    phCategory: '分类名称',
+    phNote: '备注（可选）',
+    errDuplicate: '该日文词条已存在',
+    btnCancelText: '取消',
+    btnSave: '保存',
+    modalDeleteTitle: '删除确认',
+    modalDeleteMsg: '确定要删除该词条吗？',
+    modalDeleteItem: '确定要删除「{jp}」吗？',
+    btnDelete: '删除',
+    noCategory: '-',
+    toastFileParsed: '文件解析完成',
+    toastFileParseFail: '文件解析失败: {err}',
+    toastFileTypeErr: '请选择 Excel 文件(.xlsx/.xls)',
+    toastNoCells: '没有可翻译的单元格',
+    toastTransError: '翻译错误: {err}',
+    toastTransCancelled: '翻译已取消',
+    toastTransDone: '翻译完成！',
+    toastDownloadDone: '文件已下载',
+    toastEntryAdded: '词条已添加',
+    toastEntryUpdated: '词条已更新',
+    toastEntryDeleted: '词条已删除',
+    toastImportDone: '导入完成: {added}条添加, {skipped}条跳过(重复/无效)',
+    toastImportFail: '导入失败: {err}',
+    toastInvalidDict: '无效的词库文件',
+    toastDictExported: '词库已导出',
+    toastJpEnRequired: '日文和英文为必填项',
+    dataEmpty: '无数据',
+    modelSizeLabel: '{size} GB',
+  },
+  ja: {
+    appTitle: '日英翻訳ツール',
+    tabTranslate: '\u{1F4C4} 翻訳ワークスペース',
+    tabDictionary: '\u{1F4D6} 辞書管理',
+    tabSettings: '\u2699 設定',
+    connDisconnected: '未接続',
+    connChecking: '確認中...',
+    connOk: '接続OK ({n}モデル)',
+    connFail: '接続失敗',
+    cardUpload: '\u{1F4CE} ファイルアップロード',
+    uploadHint: 'Excelファイルをドラッグ＆ドロップ または クリックして選択',
+    cardTranslateOptions: '\u2699 翻訳オプション',
+    summaryModel: 'モデル',
+    labelStrategy: '翻訳戦略',
+    strategySmart: 'スマートバッチ',
+    strategySingle: '1セルずつ',
+    labelDictionary: '辞書',
+    dictEnabled: '辞書を使用',
+    cardSelect: '\u2714 列選択',
+    colPrefix: '列',
+    emptyCol: '(空)',
+    cardProgress: '\u23F3 翻訳進捗',
+    statusPreparing: '準備中...',
+    cellProgress: '{done} / {total} セル完了',
+    btnStart: '\u{1F680} 翻訳開始',
+    btnCancel: '\u23F9 キャンセル',
+    cardOllamaSettings: '\u{1F527} Ollama 接続設定',
+    sectionConnection: '接続構成',
+    labelOllamaUrl: 'OLLAMA URL',
+    btnCheck: '\u21BB 接続検査',
+    sectionModel: 'モデル選択',
+    modelListHint: '「接続検査」をクリックして利用可能なモデルを取得',
+    labelCustomModel: 'カスタムモデル:',
+    sectionAdvanced: '詳細パラメータ',
+    labelTimeout: 'タイムアウト(秒)',
+    labelBatchSize: 'バッチサイズ',
+    btnSaveSettings: '\u{1F4BE} 設定保存',
+    toastSettingsSaved: '設定を保存しました',
+    toastOllamaOk: 'Ollama接続成功、{n}モデル検出',
+    toastOllamaFail: 'Ollamaに接続できません',
+    toastNoModelSelected: '設定でモデルを選択してください',
+    cardDict: '\u{1F4D6} 辞書管理',
+    dictSearchPh: '検索...',
+    dictAllCat: '全カテゴリ',
+    btnAdd: '+ 追加',
+    btnImport: '\u{1F4E5} インポート',
+    btnExport: '\u{1F4E4} エクスポート',
+    thCategory: 'カテゴリ',
+    thJapanese: '日本語',
+    thEnglish: '英語',
+    thNote: 'メモ',
+    thActions: '操作',
+    dictEmpty: '辞書エントリがありません',
+    modalAdd: 'エントリ追加',
+    modalEdit: 'エントリ編集',
+    labelJapanese: '日本語 *',
+    labelEnglish: '英語 *',
+    labelCategory: 'カテゴリ',
+    labelNote: 'メモ',
+    phJapanese: '日本語テキスト',
+    phEnglish: 'English text',
+    phCategory: 'カテゴリ名',
+    phNote: 'メモ（任意）',
+    errDuplicate: 'この日本語エントリは既に存在します',
+    btnCancelText: 'キャンセル',
+    btnSave: '保存',
+    modalDeleteTitle: '削除確認',
+    modalDeleteMsg: 'このエントリを削除してもよろしいですか？',
+    modalDeleteItem: '「{jp}」を削除してもよろしいですか？',
+    btnDelete: '削除',
+    noCategory: '-',
+    toastFileParsed: 'ファイル解析完了',
+    toastFileParseFail: 'ファイル解析失敗: {err}',
+    toastFileTypeErr: 'Excelファイル(.xlsx/.xls)を選択してください',
+    toastNoCells: '翻訳するセルがありません',
+    toastTransError: '翻訳エラー: {err}',
+    toastTransCancelled: '翻訳がキャンセルされました',
+    toastTransDone: '翻訳完了！',
+    toastDownloadDone: 'ファイルをダウンロードしました',
+    toastEntryAdded: 'エントリを追加しました',
+    toastEntryUpdated: 'エントリを更新しました',
+    toastEntryDeleted: 'エントリを削除しました',
+    toastImportDone: 'インポート完了: {added}件追加, {skipped}件スキップ(重複/不正)',
+    toastImportFail: 'インポート失敗: {err}',
+    toastInvalidDict: '無効な辞書ファイルです',
+    toastDictExported: '辞書をエクスポートしました',
+    toastJpEnRequired: '日本語と英語は必須です',
+    dataEmpty: 'データなし',
+    modelSizeLabel: '{size} GB',
+  },
+  en: {
+    appTitle: 'JA-EN Translator',
+    tabTranslate: '\u{1F4C4} Translate',
+    tabDictionary: '\u{1F4D6} Dictionary',
+    tabSettings: '\u2699 Settings',
+    connDisconnected: 'Disconnected',
+    connChecking: 'Checking...',
+    connOk: 'Connected ({n} models)',
+    connFail: 'Connection failed',
+    cardUpload: '\u{1F4CE} File Upload',
+    uploadHint: 'Drag & drop or click to upload Excel file',
+    cardTranslateOptions: '\u2699 Translation Options',
+    summaryModel: 'Model',
+    labelStrategy: 'Strategy',
+    strategySmart: 'Smart Batch',
+    strategySingle: 'Cell by Cell',
+    labelDictionary: 'Dictionary',
+    dictEnabled: 'Enable Dictionary',
+    cardSelect: '\u2714 Column Selection',
+    colPrefix: 'Col',
+    emptyCol: '(empty)',
+    cardProgress: '\u23F3 Translation Progress',
+    statusPreparing: 'Preparing...',
+    cellProgress: '{done} / {total} cells done',
+    btnStart: '\u{1F680} Start Translation',
+    btnCancel: '\u23F9 Cancel',
+    cardOllamaSettings: '\u{1F527} Ollama Connection Settings',
+    sectionConnection: 'Connection',
+    labelOllamaUrl: 'OLLAMA URL',
+    btnCheck: '\u21BB Check Connection',
+    sectionModel: 'Model Selection',
+    modelListHint: 'Click "Check Connection" to load available models',
+    labelCustomModel: 'Custom model:',
+    sectionAdvanced: 'Advanced Parameters',
+    labelTimeout: 'Timeout (sec)',
+    labelBatchSize: 'Batch Size',
+    btnSaveSettings: '\u{1F4BE} Save Settings',
+    toastSettingsSaved: 'Settings saved',
+    toastOllamaOk: 'Ollama connected, {n} models found',
+    toastOllamaFail: 'Cannot connect to Ollama',
+    toastNoModelSelected: 'Please select a model in Settings first',
+    cardDict: '\u{1F4D6} Dictionary',
+    dictSearchPh: 'Search...',
+    dictAllCat: 'All Categories',
+    btnAdd: '+ Add',
+    btnImport: '\u{1F4E5} Import',
+    btnExport: '\u{1F4E4} Export',
+    thCategory: 'Category',
+    thJapanese: 'Japanese',
+    thEnglish: 'English',
+    thNote: 'Note',
+    thActions: 'Actions',
+    dictEmpty: 'No dictionary entries',
+    modalAdd: 'Add Entry',
+    modalEdit: 'Edit Entry',
+    labelJapanese: 'Japanese *',
+    labelEnglish: 'English *',
+    labelCategory: 'Category',
+    labelNote: 'Note',
+    phJapanese: 'Japanese text',
+    phEnglish: 'English text',
+    phCategory: 'Category name',
+    phNote: 'Note (optional)',
+    errDuplicate: 'This Japanese entry already exists',
+    btnCancelText: 'Cancel',
+    btnSave: 'Save',
+    modalDeleteTitle: 'Delete Confirmation',
+    modalDeleteMsg: 'Are you sure you want to delete this entry?',
+    modalDeleteItem: 'Are you sure you want to delete "{jp}"?',
+    btnDelete: 'Delete',
+    noCategory: '-',
+    toastFileParsed: 'File parsed successfully',
+    toastFileParseFail: 'File parse failed: {err}',
+    toastFileTypeErr: 'Please select an Excel file (.xlsx/.xls)',
+    toastNoCells: 'No cells to translate',
+    toastTransError: 'Translation error: {err}',
+    toastTransCancelled: 'Translation cancelled',
+    toastTransDone: 'Translation complete!',
+    toastDownloadDone: 'File downloaded',
+    toastEntryAdded: 'Entry added',
+    toastEntryUpdated: 'Entry updated',
+    toastEntryDeleted: 'Entry deleted',
+    toastImportDone: 'Import done: {added} added, {skipped} skipped (duplicate/invalid)',
+    toastImportFail: 'Import failed: {err}',
+    toastInvalidDict: 'Invalid dictionary file',
+    toastDictExported: 'Dictionary exported',
+    toastJpEnRequired: 'Japanese and English are required',
+    dataEmpty: 'No data',
+    modelSizeLabel: '{size} GB',
+  }
+};
+
+let currentLang = localStorage.getItem('excel-translator-lang') || 'zh';
+
+function t(key, params = {}) {
+  let text = LANG[currentLang]?.[key] || LANG.zh[key] || key;
+  for (const [k, v] of Object.entries(params)) {
+    text = text.replace(`{${k}}`, v);
+  }
+  return text;
+}
+
+function applyI18n() {
+  document.documentElement.lang = currentLang;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    el.textContent = t(key);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+  });
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === currentLang);
+  });
+  renderDictionary();
+  if (AppState.sheets.length) {
+    renderColumnGrid();
+  }
+  updateModelSummary();
+}
+
+// Language switcher event
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentLang = btn.dataset.lang;
+    localStorage.setItem('excel-translator-lang', currentLang);
+    applyI18n();
+  });
+});
+
+// ============================================================
+// App State
+// ============================================================
+const SETTINGS_STORAGE_KEY = 'excel-translator-settings';
+const DICT_STORAGE_KEY = 'excel-translator-dictionary';
+
+const DEFAULT_SETTINGS = {
+  ollamaUrl: 'http://localhost:11434',
+  model: '',
+  timeout: 120,
+  batchSize: 5,
+};
+
+const AppState = {
+  workbook: null,
+  sheets: [],
+  selectedSheet: 0,
+  selectedColumns: new Set(),
+  translating: false,
+  cancelRequested: false,
+  dictionary: { version: "1.0", name: "术语库", entries: [] },
+  editingEntryId: null,
+  useDictionary: true,
+  settings: { ...DEFAULT_SETTINGS },
+  availableModels: [],
+};
+
+// ============================================================
+// Utility
+// ============================================================
+function $(sel) { return document.querySelector(sel); }
+function $$(sel) { return document.querySelectorAll(sel); }
+
+function showToast(msg, type = 'info') {
+  const container = $('#toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
+}
+
+function uuid() {
+  return 'xxxx-xxxx'.replace(/x/g, () => ((Math.random()*16)|0).toString(16));
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return '';
+  const gb = (bytes / (1024 * 1024 * 1024)).toFixed(1);
+  return t('modelSizeLabel', { size: gb });
+}
+
+// ============================================================
+// Settings Persistence
+// ============================================================
+function loadSettings() {
+  const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      AppState.settings = { ...DEFAULT_SETTINGS, ...parsed };
+    } catch (e) {
+      AppState.settings = { ...DEFAULT_SETTINGS };
+    }
+  }
+  applySettingsToUI();
+}
+
+function saveSettings() {
+  AppState.settings.ollamaUrl = $('#ollamaUrl').value.trim() || DEFAULT_SETTINGS.ollamaUrl;
+  AppState.settings.timeout = parseInt($('#ollamaTimeout').value) || DEFAULT_SETTINGS.timeout;
+  AppState.settings.batchSize = parseInt($('#ollamaBatchSize').value) || DEFAULT_SETTINGS.batchSize;
+
+  // Determine selected model
+  const selectedRadio = document.querySelector('input[name="modelSelect"]:checked');
+  if (selectedRadio) {
+    if (selectedRadio.value === '__custom__') {
+      AppState.settings.model = $('#customModelInput').value.trim();
+    } else {
+      AppState.settings.model = selectedRadio.value;
+    }
+  }
+
+  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(AppState.settings));
+  updateModelSummary();
+  showToast(t('toastSettingsSaved'), 'success');
+}
+
+function applySettingsToUI() {
+  const s = AppState.settings;
+  $('#ollamaUrl').value = s.ollamaUrl;
+  $('#ollamaTimeout').value = s.timeout;
+  $('#ollamaBatchSize').value = s.batchSize;
+
+  if (s.model && AppState.availableModels.length === 0) {
+    // Model set from storage but model list not yet loaded — set custom input
+    $('#customModelInput').value = s.model;
+    $('#radioCustomModel').checked = true;
+    $('#customModelItem').classList.add('selected');
+  }
+  updateModelSummary();
+}
+
+function updateModelSummary() {
+  const model = AppState.settings.model;
+  const el = $('#summaryModelVal');
+  if (el) {
+    el.textContent = model || '-';
+  }
+}
+
+// ============================================================
+// Tab Switching
+// ============================================================
+$$('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.tab-btn').forEach(b => b.classList.remove('active'));
+    $$('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    $(`#tab-${btn.dataset.tab}`).classList.add('active');
+  });
+});
+
+// ============================================================
+// Dictionary Toggle
+// ============================================================
+$('#dictToggle').addEventListener('click', function() {
+  this.classList.toggle('on');
+  AppState.useDictionary = this.classList.contains('on');
+});
+
+// ============================================================
+// File Upload
+// ============================================================
+const uploadZone = $('#uploadZone');
+const fileInput = $('#fileInput');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  uploadZone.classList.add('dragover');
+});
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+function handleFile(file) {
+  if (!file.name.match(/\.xlsx?$/i)) {
+    showToast(t('toastFileTypeErr'), 'error');
+    return;
+  }
+  $('#fileName').textContent = file.name;
+  $('#fileName').classList.remove('hidden');
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      AppState.workbook = XLSX.read(e.target.result, { type: 'array' });
+      AppState.sheets = AppState.workbook.SheetNames.map(name => {
+        const ws = AppState.workbook.Sheets[name];
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        return { name, rows: data };
+      });
+      AppState.selectedSheet = 0;
+      AppState.selectedColumns.clear();
+      renderSheetTabs();
+      renderColumnGrid();
+      $('#settingsCard').style.display = '';
+      $('#selectCard').style.display = '';
+      $('#actionBar').style.display = '';
+      showToast(t('toastFileParsed'), 'success');
+    } catch (err) {
+      showToast(t('toastFileParseFail', { err: err.message }), 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderSheetTabs() {
+  const container = $('#sheetTabs');
+  container.innerHTML = '';
+  AppState.sheets.forEach((sheet, i) => {
+    const tab = document.createElement('div');
+    tab.className = `sheet-tab ${i === AppState.selectedSheet ? 'active' : ''}`;
+    tab.textContent = sheet.name;
+    tab.addEventListener('click', () => {
+      AppState.selectedSheet = i;
+      AppState.selectedColumns.clear();
+      renderSheetTabs();
+      renderColumnGrid();
+      updateTranslateBtn();
+    });
+    container.appendChild(tab);
+  });
+}
+
+function renderColumnGrid() {
+  const container = $('#columnGrid');
+  container.innerHTML = '';
+  const sheet = AppState.sheets[AppState.selectedSheet];
+  if (!sheet || !sheet.rows.length) {
+    container.innerHTML = `<div class="empty-state">${t('dataEmpty')}</div>`;
+    return;
+  }
+  const headers = sheet.rows[0];
+  headers.forEach((header, colIdx) => {
+    const preview = sheet.rows.slice(1, 4).map(r => r[colIdx] ?? '').join(' / ');
+    const card = document.createElement('div');
+    card.className = `column-card ${AppState.selectedColumns.has(colIdx) ? 'selected' : ''}`;
+    card.innerHTML = `
+      <input type="checkbox" ${AppState.selectedColumns.has(colIdx) ? 'checked' : ''}>
+      <div class="column-info">
+        <div class="column-name">${escapeHtml(String(header || `${t('colPrefix')}${colIdx+1}`))}</div>
+        <div class="column-preview">${escapeHtml(preview || t('emptyCol'))}</div>
+      </div>
+    `;
+    card.addEventListener('click', (e) => {
+      if (e.target.type === 'checkbox') return;
+      const cb = card.querySelector('input[type=checkbox]');
+      cb.checked = !cb.checked;
+      toggleColumn(colIdx, cb.checked, card);
+    });
+    card.querySelector('input[type=checkbox]').addEventListener('change', (e) => {
+      toggleColumn(colIdx, e.target.checked, card);
+    });
+    container.appendChild(card);
+  });
+}
+
+function toggleColumn(idx, checked, card) {
+  if (checked) {
+    AppState.selectedColumns.add(idx);
+    card.classList.add('selected');
+  } else {
+    AppState.selectedColumns.delete(idx);
+    card.classList.remove('selected');
+  }
+  updateTranslateBtn();
+}
+
+function updateTranslateBtn() {
+  $('#btnTranslate').disabled = AppState.selectedColumns.size === 0;
+  $('#dictCount').textContent = AppState.dictionary.entries.length;
+}
+
+// ============================================================
+// Ollama Connection & Model List
+// ============================================================
+$('#btnCheckConn').addEventListener('click', checkConnection);
+$('#btnSaveSettings').addEventListener('click', saveSettings);
+
+// Model selection handlers
+document.addEventListener('change', (e) => {
+  if (e.target.name === 'modelSelect') {
+    // Update selected style
+    document.querySelectorAll('.model-item, .model-item-custom').forEach(el => {
+      el.classList.remove('selected');
+    });
+    e.target.closest('.model-item, .model-item-custom').classList.add('selected');
+  }
+});
+
+// Custom model input auto-select the custom radio
+$('#customModelInput').addEventListener('focus', () => {
+  $('#radioCustomModel').checked = true;
+  document.querySelectorAll('.model-item, .model-item-custom').forEach(el => {
+    el.classList.remove('selected');
+  });
+  $('#customModelItem').classList.add('selected');
+});
+
+async function checkConnection() {
+  const url = $('#ollamaUrl').value.trim();
+  // Update both status indicators
+  const statusHeader = $('#connStatus');
+  const textHeader = $('#connText');
+  const statusSettings = $('#connStatusSettings');
+  const textSettings = $('#connTextSettings');
+
+  statusHeader.className = 'conn-status checking';
+  textHeader.textContent = t('connChecking');
+  statusSettings.className = 'conn-status checking';
+  textSettings.textContent = t('connChecking');
+  $('#connDetail').textContent = '';
+
+  try {
+    const res = await fetch(url + '/api/tags', { signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      const data = await res.json();
+      const models = data.models || [];
+      AppState.availableModels = models;
+
+      statusHeader.className = 'conn-status ok';
+      textHeader.textContent = t('connOk', { n: models.length });
+      statusSettings.className = 'conn-status ok';
+      textSettings.textContent = t('connOk', { n: models.length });
+
+      if (models.length > 0) {
+        $('#connDetail').textContent = models.map(m => m.name).join(', ');
+      }
+
+      showToast(t('toastOllamaOk', { n: models.length }), 'success');
+      renderModelList(models);
+    } else {
+      throw new Error('API Error');
+    }
+  } catch (err) {
+    AppState.availableModels = [];
+    statusHeader.className = 'conn-status fail';
+    textHeader.textContent = t('connFail');
+    statusSettings.className = 'conn-status fail';
+    textSettings.textContent = t('connFail');
+    $('#connDetail').textContent = '';
+    showToast(t('toastOllamaFail'), 'error');
+  }
+}
+
+function renderModelList(models) {
+  const listEl = $('#modelList');
+  const emptyEl = $('#modelListEmpty');
+
+  if (models.length === 0) {
+    listEl.classList.add('hidden');
+    emptyEl.classList.remove('hidden');
+    return;
+  }
+
+  emptyEl.classList.add('hidden');
+  listEl.classList.remove('hidden');
+  listEl.innerHTML = '';
+
+  models.forEach(m => {
+    const item = document.createElement('div');
+    item.className = `model-item ${AppState.settings.model === m.name ? 'selected' : ''}`;
+    const sizeStr = m.size ? formatBytes(m.size) : '';
+    item.innerHTML = `
+      <input type="radio" name="modelSelect" class="model-radio" value="${escapeHtml(m.name)}" ${AppState.settings.model === m.name ? 'checked' : ''}>
+      <span class="model-name">${escapeHtml(m.name)}</span>
+      ${sizeStr ? `<span class="model-size">${sizeStr}</span>` : ''}
+    `;
+    item.addEventListener('click', () => {
+      const radio = item.querySelector('input[type=radio]');
+      radio.checked = true;
+      document.querySelectorAll('.model-item, .model-item-custom').forEach(el => {
+        el.classList.remove('selected');
+      });
+      item.classList.add('selected');
+      AppState.settings.model = m.name;
+    });
+    listEl.appendChild(item);
+  });
+
+  // If saved model matches one in the list, select it; otherwise select custom
+  const savedModelExists = models.some(m => m.name === AppState.settings.model);
+  if (savedModelExists) {
+    $('#customModelItem').classList.remove('selected');
+  } else if (AppState.settings.model) {
+    $('#customModelInput').value = AppState.settings.model;
+    $('#radioCustomModel').checked = true;
+    $('#customModelItem').classList.add('selected');
+  }
+}
+
+// ============================================================
+// Translation Engine
+// ============================================================
+$('#btnTranslate').addEventListener('click', startTranslation);
+$('#btnCancel').addEventListener('click', () => { AppState.cancelRequested = true; });
+
+async function startTranslation() {
+  if (AppState.translating) return;
+
+  // Validate: model must be selected
+  if (!AppState.settings.model) {
+    showToast(t('toastNoModelSelected'), 'warning');
+    // Switch to settings tab
+    $$('.tab-btn').forEach(b => b.classList.remove('active'));
+    $$('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector('[data-tab="settings"]').classList.add('active');
+    $('#tab-settings').classList.add('active');
+    return;
+  }
+
+  AppState.translating = true;
+  AppState.cancelRequested = false;
+
+  const sheet = AppState.sheets[AppState.selectedSheet];
+  const colIndices = [...AppState.selectedColumns].sort((a, b) => a - b);
+
+  const cells = [];
+  for (let rowIdx = 1; rowIdx < sheet.rows.length; rowIdx++) {
+    for (const colIdx of colIndices) {
+      const val = sheet.rows[rowIdx]?.[colIdx];
+      if (val !== undefined && val !== null && String(val).trim() !== '') {
+        cells.push({ rowIdx, colIdx, original: String(val) });
+      }
+    }
+  }
+
+  if (cells.length === 0) {
+    showToast(t('toastNoCells'), 'warning');
+    AppState.translating = false;
+    return;
+  }
+
+  $('#progressCard').classList.remove('hidden');
+  $('#btnCancel').classList.remove('hidden');
+  $('#btnTranslate').disabled = true;
+  updateProgress(0, cells.length);
+
+  const strategy = document.querySelector('input[name=strategy]:checked').value;
+  const ollamaUrl = AppState.settings.ollamaUrl;
+  const model = AppState.settings.model;
+  const batchSize = AppState.settings.batchSize;
+
+  let completed = 0;
+
+  try {
+    if (strategy === 'smart') {
+      let i = 0;
+      while (i < cells.length && !AppState.cancelRequested) {
+        const cell = cells[i];
+        if (cell.original.length > 200) {
+          const result = await translateSingle(ollamaUrl, model, cell.original);
+          if (result) cell.translated = result;
+          completed++;
+        } else {
+          const batch = [cell];
+          let j = i + 1;
+          while (j < cells.length && batch.length < batchSize && cells[j].colIdx === cell.colIdx && cells[j].original.length <= 200) {
+            batch.push(cells[j]);
+            j++;
+          }
+          const results = await translateBatch(ollamaUrl, model, batch.map(b => b.original));
+          if (results && results.length === batch.length) {
+            batch.forEach((b, idx) => b.translated = results[idx]);
+          } else {
+            for (const b of batch) {
+              const r = await translateSingle(ollamaUrl, model, b.original);
+              if (r) b.translated = r;
+              completed++;
+              updateProgress(completed, cells.length);
+            }
+            i = j;
+            continue;
+          }
+          completed += batch.length;
+        }
+        i++;
+        updateProgress(completed, cells.length);
+      }
+    } else {
+      for (const cell of cells) {
+        if (AppState.cancelRequested) break;
+        const result = await translateSingle(ollamaUrl, model, cell.original);
+        if (result) cell.translated = result;
+        completed++;
+        updateProgress(completed, cells.length);
+      }
+    }
+  } catch (err) {
+    showToast(t('toastTransError', { err: err.message }), 'error');
+  }
+
+  for (const cell of cells) {
+    if (cell.translated !== undefined) {
+      if (!sheet.rows[cell.rowIdx]) sheet.rows[cell.rowIdx] = [];
+      sheet.rows[cell.rowIdx][cell.colIdx] = cell.translated;
+    }
+  }
+
+  if (AppState.cancelRequested) {
+    showToast(t('toastTransCancelled'), 'warning');
+  } else {
+    showToast(t('toastTransDone'), 'success');
+    downloadTranslatedFile();
+  }
+
+  AppState.translating = false;
+  $('#btnCancel').classList.add('hidden');
+  $('#btnTranslate').disabled = false;
+}
+
+function buildSystemPrompt() {
+  let prompt = 'You are a professional Japanese-to-English translator. Translate the given Japanese text to English. Preserve line breaks and formatting exactly as in the original. Do not add any explanation or notes, only provide the translation.';
+  if (AppState.useDictionary && AppState.dictionary.entries.length > 0) {
+    const terms = AppState.dictionary.entries.map(e => `- ${e.japanese} → ${e.english}`).join('\n');
+    prompt += `\n\nYou MUST use the following translations for specific terms:\n${terms}\nDo not translate these terms differently.`;
+  }
+  return prompt;
+}
+
+async function translateSingle(url, model, text) {
+  const systemPrompt = buildSystemPrompt();
+  const timeout = (AppState.settings.timeout || 120) * 1000;
+  try {
+    const res = await fetch(url + '/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Translate the following Japanese text to English. Preserve line breaks exactly.\n\n${text}` }
+        ],
+        stream: false
+      }),
+      signal: AbortSignal.timeout(timeout)
+    });
+    const data = await res.json();
+    return data.message?.content?.trim() || '';
+  } catch (err) {
+    console.error('Translation error:', err);
+    return null;
+  }
+}
+
+async function translateBatch(url, model, texts) {
+  const systemPrompt = buildSystemPrompt();
+  const numberedInput = texts.map((t, i) => `[${i+1}] ${t}`).join('\n\n');
+  const userPrompt = `Translate the following Japanese texts to English. Each item is numbered. Preserve line breaks exactly. Return translations in the same numbered format.\n\n${numberedInput}\n\nOutput format:\n[1] English translation\n\n[2] Another translation`;
+  const timeout = (AppState.settings.timeout || 120) * 1000;
+
+  try {
+    const res = await fetch(url + '/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        stream: false
+      }),
+      signal: AbortSignal.timeout(Math.max(timeout, 180000))
+    });
+    const data = await res.json();
+    const content = data.message?.content?.trim() || '';
+
+    const results = [];
+    const regex = /\[(\d+)\]\s*([\s\S]*?)(?=\n\[\d+\]|$)/g;
+    let match;
+    while ((match = regex.exec(content)) !== null) {
+      results[parseInt(match[1]) - 1] = match[2].trim();
+    }
+    return results.length === texts.length ? results : null;
+  } catch (err) {
+    console.error('Batch translation error:', err);
+    return null;
+  }
+}
+
+function updateProgress(done, total) {
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  $('#progressFill').style.width = pct + '%';
+  $('#progressText').textContent = pct + '%';
+  $('#statusMsg').textContent = t('cellProgress', { done, total });
+  $('#statusMsg').className = 'status-msg';
+}
+
+// ============================================================
+// Download Result
+// ============================================================
+function downloadTranslatedFile() {
+  if (!AppState.workbook) return;
+  const sheet = AppState.sheets[AppState.selectedSheet];
+  const ws = XLSX.utils.aoa_to_sheet(sheet.rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheet.name);
+  const originalName = $('#fileName').textContent.replace(/\.xlsx?$/i, '');
+  XLSX.writeFile(wb, `${originalName}_translated.xlsx`);
+  showToast(t('toastDownloadDone'), 'success');
+}
+
+// ============================================================
+// Dictionary Manager
+// ============================================================
+function loadDictionary() {
+  const stored = localStorage.getItem(DICT_STORAGE_KEY);
+  if (stored) {
+    try {
+      AppState.dictionary = JSON.parse(stored);
+    } catch (e) {
+      AppState.dictionary = { version: "1.0", name: "术语库", entries: [] };
+    }
+  }
+  if (!AppState.dictionary.entries.length) {
+    fetch('./dictionary.json')
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.entries && data.entries.length) {
+          AppState.dictionary = data;
+          saveDictionary();
+          renderDictionary();
+        }
+      })
+      .catch(() => {});
+  }
+  renderDictionary();
+  updateDictCount();
+}
+
+function saveDictionary() {
+  localStorage.setItem(DICT_STORAGE_KEY, JSON.stringify(AppState.dictionary));
+  updateDictCount();
+}
+
+function updateDictCount() {
+  const count = AppState.dictionary.entries.length;
+  $('#entryCount').textContent = count;
+  $('#dictCount').textContent = count;
+}
+
+function isJapaneseDuplicate(jpText, excludeId = null) {
+  const normalized = jpText.trim();
+  return AppState.dictionary.entries.some(e =>
+    e.japanese.trim() === normalized && e.id !== excludeId
+  );
+}
+
+// ---- Render Dictionary ----
+function renderDictionary() {
+  const tbody = $('#dictBody');
+  const search = $('#dictSearch').value.trim().toLowerCase();
+  const filter = $('#dictFilter').value;
+
+  let entries = AppState.dictionary.entries;
+  if (search) {
+    entries = entries.filter(e =>
+      e.japanese.toLowerCase().includes(search) ||
+      e.english.toLowerCase().includes(search)
+    );
+  }
+  if (filter) {
+    entries = entries.filter(e => e.category === filter);
+  }
+
+  if (entries.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-state">${t('dictEmpty')}</td></tr>`;
+  } else {
+    tbody.innerHTML = entries.map(e => `
+      <tr data-id="${e.id}">
+        <td><span class="cat-badge">${escapeHtml(e.category || t('noCategory'))}</span></td>
+        <td class="jp-text">${escapeHtml(e.japanese)}</td>
+        <td class="en-text">${escapeHtml(e.english)}</td>
+        <td class="text-muted text-sm">${escapeHtml(e.note || '')}</td>
+        <td class="actions">
+          <button class="btn btn-outline btn-icon btn-sm" title="${t('modalEdit')}" onclick="editEntry('${e.id}')">&#x270F;</button>
+          <button class="btn btn-danger btn-icon btn-sm" title="${t('btnDelete')}" onclick="deleteEntry('${e.id}')">&#x1F5D1;</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  updateCategoryFilter();
+  updateDictCount();
+}
+
+function updateCategoryFilter() {
+  const select = $('#dictFilter');
+  const current = select.value;
+  const cats = [...new Set(AppState.dictionary.entries.map(e => e.category).filter(Boolean))];
+  select.innerHTML = `<option value="">${t('dictAllCat')}</option>` +
+    cats.map(c => `<option value="${escapeHtml(c)}" ${c === current ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
+}
+
+// ---- Add/Edit Modal ----
+$('#btnAddEntry').addEventListener('click', () => openEntryModal());
+$('#btnCancelModal').addEventListener('click', closeEntryModal);
+$('#btnSaveEntry').addEventListener('click', saveEntry);
+
+function openEntryModal(entry = null) {
+  AppState.editingEntryId = entry ? entry.id : null;
+  const titleEl = $('#modalTitle');
+  titleEl.textContent = entry ? t('modalEdit') : t('modalAdd');
+  titleEl.setAttribute('data-i18n', entry ? 'modalEdit' : 'modalAdd');
+  $('#entryJapanese').value = entry ? entry.japanese : '';
+  $('#entryEnglish').value = entry ? entry.english : '';
+  $('#entryCategory').value = entry ? entry.category : '';
+  $('#entryNote').value = entry ? entry.note : '';
+  $('#jpDuplicateMsg').classList.add('hidden');
+
+  if (entry) {
+    $('#entryJapanese').readOnly = true;
+    $('#entryJapanese').style.opacity = '0.5';
+  } else {
+    $('#entryJapanese').readOnly = false;
+    $('#entryJapanese').style.opacity = '1';
+  }
+
+  $('#entryJapanese').placeholder = t('phJapanese');
+  $('#entryEnglish').placeholder = t('phEnglish');
+  $('#entryCategory').placeholder = t('phCategory');
+  $('#entryNote').placeholder = t('phNote');
+
+  $('#entryModal').classList.add('show');
+  if (!entry) $('#entryJapanese').focus();
+}
+
+function closeEntryModal() {
+  $('#entryModal').classList.remove('show');
+  AppState.editingEntryId = null;
+}
+
+function saveEntry() {
+  const jp = $('#entryJapanese').value.trim();
+  const en = $('#entryEnglish').value.trim();
+  const cat = $('#entryCategory').value.trim();
+  const note = $('#entryNote').value.trim();
+
+  if (!jp || !en) {
+    showToast(t('toastJpEnRequired'), 'error');
+    return;
+  }
+
+  if (!AppState.editingEntryId) {
+    if (isJapaneseDuplicate(jp)) {
+      $('#jpDuplicateMsg').classList.remove('hidden');
+      return;
+    }
+    AppState.dictionary.entries.push({
+      id: uuid(),
+      japanese: jp,
+      english: en,
+      category: cat,
+      note: note
+    });
+    showToast(t('toastEntryAdded'), 'success');
+  } else {
+    const entry = AppState.dictionary.entries.find(e => e.id === AppState.editingEntryId);
+    if (entry) {
+      entry.english = en;
+      entry.category = cat;
+      entry.note = note;
+      showToast(t('toastEntryUpdated'), 'success');
+    }
+  }
+
+  saveDictionary();
+  renderDictionary();
+  closeEntryModal();
+}
+
+window.editEntry = function(id) {
+  const entry = AppState.dictionary.entries.find(e => e.id === id);
+  if (entry) openEntryModal(entry);
+};
+
+// ---- Delete ----
+let pendingDeleteId = null;
+
+window.deleteEntry = function(id) {
+  pendingDeleteId = id;
+  const entry = AppState.dictionary.entries.find(e => e.id === id);
+  $('#deleteMsg').textContent = t('modalDeleteItem', { jp: entry?.japanese || '' });
+  $('#deleteModal').classList.add('show');
+};
+
+$('#btnCancelDelete').addEventListener('click', () => {
+  $('#deleteModal').classList.remove('show');
+  pendingDeleteId = null;
+});
+
+$('#btnConfirmDelete').addEventListener('click', () => {
+  if (pendingDeleteId) {
+    AppState.dictionary.entries = AppState.dictionary.entries.filter(e => e.id !== pendingDeleteId);
+    saveDictionary();
+    renderDictionary();
+    showToast(t('toastEntryDeleted'), 'success');
+  }
+  $('#deleteModal').classList.remove('show');
+  pendingDeleteId = null;
+});
+
+// ---- Search/Filter ----
+$('#dictSearch').addEventListener('input', renderDictionary);
+$('#dictFilter').addEventListener('change', renderDictionary);
+
+// ---- Import/Export ----
+$('#btnImportDict').addEventListener('click', () => $('#importFileInput').click());
+
+$('#importFileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data.entries || !Array.isArray(data.entries)) {
+      showToast(t('toastInvalidDict'), 'error');
+      return;
+    }
+    let added = 0, skipped = 0;
+    for (const entry of data.entries) {
+      if (!entry.japanese || !entry.english) { skipped++; continue; }
+      if (isJapaneseDuplicate(entry.japanese)) { skipped++; continue; }
+      AppState.dictionary.entries.push({
+        id: uuid(),
+        japanese: entry.japanese.trim(),
+        english: entry.english.trim(),
+        category: (entry.category || '').trim(),
+        note: (entry.note || '').trim()
+      });
+      added++;
+    }
+    saveDictionary();
+    renderDictionary();
+    showToast(t('toastImportDone', { added, skipped }), 'success');
+  } catch (err) {
+    showToast(t('toastImportFail', { err: err.message }), 'error');
+  }
+  e.target.value = '';
+});
+
+$('#btnExportDict').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(AppState.dictionary, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'dictionary.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(t('toastDictExported'), 'success');
+});
+
+// ============================================================
+// Init
+// ============================================================
+loadSettings();
+loadDictionary();
+applyI18n();
+checkConnection();
+</script>
+</body>
+</html>
